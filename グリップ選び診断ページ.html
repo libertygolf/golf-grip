@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>グリップ選び診断</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",sans-serif;background:#f5f7fb;margin:0;color:#172033}
+.container{max-width:760px;margin:auto;padding:22px}
+.card{background:#fff;border-radius:18px;padding:24px;margin:18px 0;box-shadow:0 8px 24px rgba(0,0,0,.08)}
+h1{font-size:26px;margin:0 0 8px;text-align:center}
+.sub{text-align:center;color:#5b6678;font-size:14px}
+.q{font-weight:700;font-size:18px;margin-bottom:14px}
+.btns{display:grid;gap:10px}
+button{border:none;border-radius:12px;padding:14px 16px;font-size:16px;font-weight:700;cursor:pointer}
+.choice{background:#eef3ff;color:#163a63}
+.primary{background:#163a63;color:white;width:100%;margin-top:12px}
+.back{background:#ddd;color:#333;width:100%;margin-top:10px}
+.result-title{font-size:24px;font-weight:800;text-align:center;color:#163a63}
+.result-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.result-box{background:#f4f7fb;border-radius:14px;padding:14px;text-align:center}
+.label{font-size:13px;color:#667}
+.value{font-size:22px;font-weight:900;color:#163a63;margin-top:5px}
+.note{font-size:14px;line-height:1.8;background:#fff9e8;border-left:5px solid #d79b00;padding:12px;border-radius:10px}
+.hidden{display:none}
+.footer{text-align:center;color:#777;font-size:12px;margin-top:20px}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="card" id="start">
+<h1>グリップ選び診断</h1>
+<p class="sub">質問に答えるだけで、あなたに合う<br>「太さ・重量・素材・バックライン」を診断します。</p>
+<button class="primary" onclick="startQuiz()">診断をはじめる</button>
+</div>
+<div class="card hidden" id="quiz">
+<div class="q" id="question"></div>
+<div class="btns" id="answers"></div>
+<button class="back" onclick="prevQuestion()">戻る</button>
+</div>
+<div class="card hidden" id="result">
+<div class="result-title">診断結果</div>
+<div class="result-grid">
+<div class="result-box"><div class="label">太さ</div><div class="value" id="thickness"></div></div>
+<div class="result-box"><div class="label">重量</div><div class="value" id="weight"></div></div>
+<div class="result-box"><div class="label">素材</div><div class="value" id="material"></div></div>
+<div class="result-box"><div class="label">バックライン</div><div class="value" id="backline"></div></div>
+</div>
+<p class="note" id="advice"></p>
+<button class="primary" onclick="restart()">もう一度診断する</button>
+</div>
+<div class="footer">※診断結果は目安です。実際の握り心地やスイングに合わせて調整してください。</div>
+</div>
+<script>
+const questions=[
+ {q:"性別を教えてください",a:[["女性",{thin:1}],["男性",{standard:1}]]},
+ {q:"グローブサイズは？",a:[["18cm以下",{thin:2}],["19〜21cm",{standard:2}],["22cm以上",{thick:2}]]},
+ {q:"握力は強い方ですか？",a:[["弱い",{thin:1,soft:1}],["普通",{standard:1}],["強い",{thick:1,hard:1}]]},
+ {q:"捕まった球を打ちたいですか？",a:[["はい",{thin:2}],["いいえ",{}]]},
+ {q:"引っ掛けやフックを治したいですか？",a:[["はい",{thick:2}],["いいえ",{}]]},
+ {q:"グリッププレッシャーは強いですか？",a:[["はい",{thick:2}],["いいえ",{standard:1}]]},
+ {q:"ヘッドの重みでスイングしたいですか？",a:[["はい",{heavy:2}],["いいえ",{}]]},
+ {q:"飛距離よりスイングの安定重視ですか？",a:[["はい",{heavy:2}],["いいえ",{}]]},
+ {q:"ヘッドスピードを上げたいですか？",a:[["はい",{light:2}],["いいえ",{}]]},
+ {q:"飛距離を伸ばしたいですか？",a:[["はい",{light:1,thin:1}],["いいえ",{}]]},
+ {q:"打感はどちらが好みですか？",a:[["ソフトな打感",{soft:2}],["カチッとした打感",{hard:2}],["どちらでもない",{medium:2}]]},
+ {q:"手汗はかきやすいタイプですか？",a:[["はい",{hard:2}],["いいえ",{medium:1}]]},
+ {q:"雨でもプレーしますか？",a:[["はい",{hard:2}],["いいえ",{}]]},
+ {q:"常にグリップを同じように握りたいですか？",a:[["はい",{lineYes:2}],["いいえ",{}]]},
+ {q:"フェースを操作したいですか？",a:[["はい",{lineNo:2}],["いいえ",{lineYes:1}]]}
+];
+let idx=0, history=[], score={thin:0,standard:0,thick:0,light:0,normalW:0,heavy:0,soft:0,medium:0,hard:0,lineYes:0,lineNo:0};
+function startQuiz(){document.getElementById("start").classList.add("hidden");document.getElementById("quiz").classList.remove("hidden");showQ();}
+function showQ(){document.getElementById("question").innerText=(idx+1)+" / "+questions.length+"　"+questions[idx].q;const box=document.getElementById("answers");box.innerHTML="";questions[idx].a.forEach(x=>{let b=document.createElement("button");b.className="choice";b.innerText=x[0];b.onclick=()=>answer(x[1]);box.appendChild(b);});}
+function answer(add){history.push(JSON.parse(JSON.stringify(score)));Object.keys(add).forEach(k=>score[k]+=add[k]);idx++; if(idx>=questions.length)showResult(); else showQ();}
+function prevQuestion(){if(idx==0)return;score=history.pop();idx--;showQ();}
+function best(arr){return arr.sort((a,b)=>b[1]-a[1])[0][0]}
+function showResult(){document.getElementById("quiz").classList.add("hidden");document.getElementById("result").classList.remove("hidden"); if(score.normalW==0) score.normalW=1; if(score.medium==0) score.medium=1; if(score.standard==0) score.standard=1; const thickness=best([["細め",score.thin],["標準",score.standard],["太め",score.thick]]); const weight=best([["軽め",score.light],["標準",score.normalW],["重め",score.heavy]]); const material=best([["ソフト",score.soft],["標準",score.medium],["ハード",score.hard]]); const backline=best([["あり",score.lineYes],["なし",score.lineNo]]); document.getElementById("thickness").innerText=thickness; document.getElementById("weight").innerText=weight; document.getElementById("material").innerText=material; document.getElementById("backline").innerText=backline; document.getElementById("advice").innerHTML="おすすめは「<b>"+thickness+" × "+weight+" × "+material+" × バックライン"+backline+"</b>」です。<br>まずはこの組み合わせを基準にして、実際の握り心地・球筋・振りやすさを確認しながら微調整するのがおすすめです。";}
+function restart(){idx=0;history=[];score={thin:0,standard:0,thick:0,light:0,normalW:0,heavy:0,soft:0,medium:0,hard:0,lineYes:0,lineNo:0};document.getElementById("result").classList.add("hidden");document.getElementById("start").classList.remove("hidden");}
+</script>
+</body>
+</html>
